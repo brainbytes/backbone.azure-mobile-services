@@ -17,7 +17,7 @@ do ->
 				delete attributes[key] if _.isFunction(value) or _.contains(@ignored(), key)
 				if isReference(@attributes[key])
 					attributes[key] = JSON.stringify(prepareRef.call(@, prepareRef(@attributes[key])))
-				else if _.isArray(@attributes[key]) and _.reduce(@attributes[key], ((memo, val) -> return isReference(val) and memo), true)
+				else if _.isArray(@attributes[key]) and _.reduce(@attributes[key], ((m, val) -> isReference(val) and m), true)
 					attributes[key] = JSON.stringify (for ref in @attributes[key] then prepareRef.call(@, ref))
 			Backbone.Model::save.call(@, attributes, options)
 
@@ -31,8 +31,11 @@ do ->
 			response = response[0] if $.isArray(response)
 			_.each response, (value, key) ->
 				try
-					newRef = JSON.parse value #convert references to models
-					response[key] = new Schema[newRef.className].Model(newRef.attributes) if isReference(newRef)
+					ref = JSON.parse value #convert references to models
+					if isReference(ref)
+						response[key] = new Schema[ref.className].Model(ref.attributes) if isReference(ref)
+					else if _.isArray(ref) and _.reduce(ref, ((memo, val) -> isReference(val) and memo), true)
+						response[key] = for data in ref then new Schema[ref.className].Model(ref.attributes)
 				catch error #not a reference
 			response
 
